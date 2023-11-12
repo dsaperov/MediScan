@@ -22,10 +22,14 @@ colors = ("red", "green", "blue")
 
 for cls in cls_dict:
     plt.figure()
-    plt.xlim([0, 256])
+    # plt.xlim([0, 256])
     hist_R = np.zeros(256)
     hist_G = np.zeros(256)
     hist_B = np.zeros(256)
+    sum_R = np.zeros((450, 600))
+    sum_G = np.zeros((450, 600))
+    sum_B = np.zeros((450, 600))
+    cnt = len(cls_dict[cls])
     for name in cls_dict[cls]:
         image = np.array(Image.open(f"./ISIC2018_Task3_Training_Input/{name}.jpg"))
 
@@ -35,10 +39,13 @@ for cls in cls_dict:
             )
             if channel_id == 0:
                 hist_R += histogram
+                sum_R += image[:, :, channel_id]
             elif channel_id == 1:
                 hist_G += histogram
+                sum_G += image[:, :, channel_id]
             else:
                 hist_B += histogram
+                sum_B += image[:, :, channel_id]
 
     bins = np.arange(256)
     for channel_id, color in enumerate(colors):
@@ -54,3 +61,12 @@ for cls in cls_dict:
         plt.xlabel("Color value")
         plt.ylabel("Pixel count")
     plt.savefig(f"./Distribution_results/{cls}_distribution.png")
+    plt.imsave(f"./Average_images_by_channels/{cls}_R.png", (sum_R / cnt), cmap='Reds_r')
+    plt.imsave(f"./Average_images_by_channels/{cls}_G.png", (sum_G / cnt), cmap='Greens_r')
+    plt.imsave(f"./Average_images_by_channels/{cls}_B.png", (sum_B / cnt), cmap='Blues_r')
+    color_comp = np.zeros((450, 600, 3))
+    color_comp[:, :, 0] = (sum_R / cnt)
+    color_comp[:, :, 1] = (sum_G / cnt)
+    color_comp[:, :, 2] = (sum_B / cnt)
+    color_comp = (color_comp / 255).astype(float)
+    plt.imsave(f"./Average_images_by_classes/{cls}.png", color_comp)
