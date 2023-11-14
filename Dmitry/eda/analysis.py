@@ -1,5 +1,5 @@
 import os
-from typing import Tuple
+from typing import Tuple, Iterator
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -8,6 +8,12 @@ from PIL import Image
 
 GT_CSV_PATH = os.path.join(os.pardir, "ISIC2018_Task3_Training_GroundTruth.csv")
 IMAGE_FOLDER_PATH = os.path.join(os.pardir, "ISIC2018_Task3_Training_Input")
+
+RESULTS_FOLDER = "results"
+IMAGE_CLASSES_FOLDER = "image_classes"
+
+AVG_CSV_NAME_TEMPLATE = "average_pixel_values_"
+VARIANCE_CSV_NAME_TEMPLATE = "pixel_variance_"
 
 df = pd.read_csv(GT_CSV_PATH)
 
@@ -21,7 +27,7 @@ column_sums.plot(kind="bar", figsize=(10, 7))
 plt.title("Number of Images by Class")
 plt.xlabel("Class Name")
 plt.ylabel("Images")
-plt.savefig("image_count_by_class.png")
+plt.savefig(os.path.join(RESULTS_FOLDER, "image_count_by_class.png"))
 
 
 # --------------------------------------
@@ -49,7 +55,7 @@ sizes_df = pd.DataFrame(image_sizes, columns=["height", "width"])
 
 sizes_df.plot.scatter(x="width", y="height")
 plt.title("Image Sizes (pixels)")
-plt.savefig("image_sizes")
+plt.savefig(os.path.join(RESULTS_FOLDER, "image_sizes"))
 
 
 # -----------------------
@@ -66,7 +72,7 @@ def plot_rgb_distributions(image_class: str, r: np.array, g: np.array, b: np.arr
     plt.xlabel("Color value")
     plt.ylabel("Pixel count")
 
-    plt.savefig(os.path.join("classes", image_class, "pixel_value_distributions" + ".png"))
+    plt.savefig(os.path.join(RESULTS_FOLDER, IMAGE_CLASSES_FOLDER, image_class, "pixel_value_distributions" + ".png"))
 
 
 def get_variance(r_avg: np.array, g_avg: np.array, b_avg: np.array,
@@ -84,10 +90,11 @@ def get_variance(r_avg: np.array, g_avg: np.array, b_avg: np.array,
     return r_square_dev / image_count + 1, g_square_dev / image_count + 1, b_square_dev / image_count + 1
 
 
-def write_to_csv(image_class: str, filenames: Tuple[str, str, str],
+def write_to_csv(image_class: str, filenames: Iterator[str],
                  arrays: Tuple[np.array, np.array, np.array]) -> None:
     for filename, arr in zip(filenames, arrays):
-        np.savetxt(os.path.join("classes", image_class, filename + ".csv"), arr, delimiter=',')
+        path = os.path.join(RESULTS_FOLDER, IMAGE_CLASSES_FOLDER, image_class, filename + ".csv")
+        np.savetxt(path, arr, delimiter=',')
 
 
 image_classes = ["AKIEC", "BKL"]
@@ -116,13 +123,14 @@ for image_class in image_classes:
 
     # Calculate average of pixel values for each of the RGB channels
     r_avg, g_avg, b_avg = r_total / image_count, g_total / image_count, b_total / image_count
-    write_to_csv(image_class, ("r_average", "g_average", "b_average"), (r_avg, g_avg, b_avg))
+    write_to_csv(image_class, (AVG_CSV_NAME_TEMPLATE + channel for channel in "rgb"), (r_avg, g_avg, b_avg))
 
     # Calculate variance of pixel values for each of the RGB channels
     r_var, g_var, b_var = get_variance(r_avg, g_avg, b_avg, image_series)
-    write_to_csv(image_class, ("r_variance", "g_variance", "b_variance"), (r_var, g_var, b_var))
+    write_to_csv(image_class, (VARIANCE_CSV_NAME_TEMPLATE + channel for channel in "rgb"), (r_var, g_var, b_var))
 
     # Combine the color channels
     rgb_avg = np.stack([r_avg, g_avg, b_avg], axis=-1)
 
-    plt.imsave(os.path.join("classes", image_class, "average_image" + ".png"), rgb_avg.astype("uint8"))
+    path = os.path.join(RESULTS_FOLDER, IMAGE_CLASSES_FOLDER, image_class, "image_from_average_pixel_values" + ".png")
+    plt.imsave(path, rgb_avg.astype("uint8"))
