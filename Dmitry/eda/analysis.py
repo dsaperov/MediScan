@@ -9,13 +9,21 @@ from PIL import Image
 GT_CSV_PATH = os.path.join(os.pardir, "ISIC2018_Task3_Training_GroundTruth.csv")
 IMAGE_FOLDER_PATH = os.path.join(os.pardir, "ISIC2018_Task3_Training_Input")
 
-RESULTS_FOLDER = "results"
-IMAGE_CLASSES_FOLDER = "image_classes"
+RESULTS_FOLDER_NAME = "results"
+IMAGE_CLASSES_FOLDER_PATH = os.path.join(RESULTS_FOLDER_NAME, "image_classes")
 
 AVG_CSV_NAME_TEMPLATE = "average_pixel_values_"
 VARIANCE_CSV_NAME_TEMPLATE = "pixel_variance_"
 
+IMAGE_CLASSES = ["AKIEC", "BKL"]
+
 df = pd.read_csv(GT_CSV_PATH)
+
+
+# Create directories where the analysis results will be stored
+os.makedirs(IMAGE_CLASSES_FOLDER_PATH, exist_ok=True)
+for image_class in IMAGE_CLASSES:
+    os.makedirs(os.path.join(IMAGE_CLASSES_FOLDER_PATH, image_class), exist_ok=True)
 
 # -----------------------------
 # Identifying class imbalance |
@@ -27,7 +35,7 @@ column_sums.plot(kind="bar", figsize=(10, 7))
 plt.title("Number of Images by Class")
 plt.xlabel("Class Name")
 plt.ylabel("Images")
-plt.savefig(os.path.join(RESULTS_FOLDER, "image_count_by_class.png"))
+plt.savefig(os.path.join(RESULTS_FOLDER_NAME, "image_count_by_class.png"))
 
 
 # --------------------------------------
@@ -55,7 +63,7 @@ sizes_df = pd.DataFrame(image_sizes, columns=["height", "width"])
 
 sizes_df.plot.scatter(x="width", y="height")
 plt.title("Image Sizes (pixels)")
-plt.savefig(os.path.join(RESULTS_FOLDER, "image_sizes"))
+plt.savefig(os.path.join(RESULTS_FOLDER_NAME, "image_sizes.png"))
 
 
 # -----------------------
@@ -72,7 +80,7 @@ def plot_rgb_distributions(image_class: str, r: np.array, g: np.array, b: np.arr
     plt.xlabel("Color value")
     plt.ylabel("Pixel count")
 
-    plt.savefig(os.path.join(RESULTS_FOLDER, IMAGE_CLASSES_FOLDER, image_class, "pixel_value_distributions" + ".png"))
+    plt.savefig(os.path.join(IMAGE_CLASSES_FOLDER_PATH, image_class, "pixel_value_distributions.png"))
 
 
 def get_variance(r_avg: np.array, g_avg: np.array, b_avg: np.array,
@@ -87,18 +95,16 @@ def get_variance(r_avg: np.array, g_avg: np.array, b_avg: np.array,
         g_square_dev += (g_array - g_avg) ** 2
         b_square_dev += (b_array - b_avg) ** 2
 
-    return r_square_dev / image_count + 1, g_square_dev / image_count + 1, b_square_dev / image_count + 1
+    return r_square_dev / (image_count - 1), g_square_dev / (image_count - 1), b_square_dev / (image_count - 1)
 
 
 def write_to_csv(image_class: str, filenames: Iterator[str],
                  arrays: Tuple[np.array, np.array, np.array]) -> None:
     for filename, arr in zip(filenames, arrays):
-        path = os.path.join(RESULTS_FOLDER, IMAGE_CLASSES_FOLDER, image_class, filename + ".csv")
-        np.savetxt(path, arr, delimiter=',')
+        np.savetxt(os.path.join(IMAGE_CLASSES_FOLDER_PATH, image_class, filename + ".csv"), arr, delimiter=',')
 
 
-image_classes = ["AKIEC", "BKL"]
-for image_class in image_classes:
+for image_class in IMAGE_CLASSES:
     r_values, g_values, b_values = np.zeros((3, 256), dtype=int)
     r_total, g_total, b_total = np.zeros((3, 450, 600), dtype=int)
 
@@ -132,5 +138,5 @@ for image_class in image_classes:
     # Combine the color channels
     rgb_avg = np.stack([r_avg, g_avg, b_avg], axis=-1)
 
-    path = os.path.join(RESULTS_FOLDER, IMAGE_CLASSES_FOLDER, image_class, "image_from_average_pixel_values" + ".png")
+    path = os.path.join(IMAGE_CLASSES_FOLDER_PATH, image_class, "image_from_average_pixel_values.png")
     plt.imsave(path, rgb_avg.astype("uint8"))
