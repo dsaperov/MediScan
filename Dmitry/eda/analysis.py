@@ -87,7 +87,7 @@ def get_variance(r_avg: np.array, g_avg: np.array, b_avg: np.array,
         g_square_dev += (g_array - g_avg) ** 2
         b_square_dev += (b_array - b_avg) ** 2
 
-    return r_square_dev / image_count + 1, g_square_dev / image_count + 1, b_square_dev / image_count + 1
+    return r_square_dev / (image_count - 1), g_square_dev / (image_count - 1), b_square_dev / (image_count - 1)
 
 
 def write_to_csv(image_class: str, filenames: Iterator[str],
