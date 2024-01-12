@@ -7,9 +7,9 @@ from PIL import Image
 from io import BytesIO
 import pandas as pd
 
-model = joblib.load("sgd_model.pkl")
-pca = joblib.load("pca.pkl")
-scaler = joblib.load("sc.pkl")
+model = joblib.load("../SGD Model/sgd_model.pkl")
+pca = joblib.load("../SGD Model/pca.pkl")
+scaler = joblib.load("../SGD Model/sc.pkl")
 
 class_dict = {"MEL": 1, "NV": 2, "BCC": 3, "AKIEC": 4, "BKL":5, "DF": 6, "VASC": 7}
 
