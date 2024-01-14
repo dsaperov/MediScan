@@ -211,11 +211,12 @@ async def download_photo(message: types.Message, bot: Bot):
     else :
         prob = predict_by_photo_CNN(bytesIO)
         prediction = np.round(prob, decimals=5)
+        dct = {"MEL": 0., "NV": 0., "BCC": 0., "AKIEC": 0., "BKL": 0., "DF": 0., "VASC": 0.}
         c = 0
-        for key, value in class_dict.items():
-            class_dict[key] = prediction[0][c]
+        for key, value in dct.items():
+            dct[key] = prediction[0][c]
             c += 1
-        for key, value in class_dict.items():
+        for key, value in dct.items():
             value = float("{:.2f}".format(value)) * 100
             await message.answer(f"The probability of {key} = {value} %")
 
