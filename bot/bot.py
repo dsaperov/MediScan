@@ -20,7 +20,7 @@ import cv2
 from tensorflow import keras
 from tensorflow.keras import layers, models
 
-from bot.utils import getenv_or_throw_exception
+from utils import getenv_or_throw_exception
 
 model = joblib.load("sgd_model.pkl")
 pca = joblib.load("pca.pkl")
