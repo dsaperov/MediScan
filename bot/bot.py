@@ -20,6 +20,8 @@ import cv2
 from tensorflow import keras
 from tensorflow.keras import layers, models
 
+from bot.utils import getenv_or_throw_exception
+
 model = joblib.load("sgd_model.pkl")
 pca = joblib.load("pca.pkl")
 scaler = joblib.load("sc.pkl")
@@ -104,7 +106,7 @@ def predict_by_photo_CNN(bytesIO) :
 
 
 logging.basicConfig(level=logging.INFO)
-bot = Bot(token = "6927350766:AAHYsGOciliUa_zmQjdBt6-_rOdnh-qxyLY")
+bot = Bot(token=getenv_or_throw_exception('BOT_TOKEN'))
 dp = Dispatcher()
 
 @dp.message(Command("start"))
