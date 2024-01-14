@@ -102,7 +102,7 @@ def predict_by_photo_CNN(bytesIO) :
     img = np.array(image)
     img_resize = cv2.resize(img, None, fx=0.3, fy=0.3)
     prob = model_CNN.predict(np.array([img_resize]))
-    return prob[0,:]
+    return prob
 
 
 logging.basicConfig(level=logging.INFO)
@@ -210,8 +210,14 @@ async def download_photo(message: types.Message, bot: Bot):
         await message.answer(f"The probability of it being a melanoma is {prob:.3f}.")
     else :
         prob = predict_by_photo_CNN(bytesIO)
-        ind = np.argmax(prob)
-        await message.answer(f"The most likely class is {dict_class[ind]}.")
+        prediction = np.round(prob, decimals=5)
+        c = 0
+        for key, value in class_dict.items():
+            class_dict[key] = prediction[0][c]
+            c += 1
+        for key, value in class_dict.items():
+            value = float("{:.2f}".format(value)) * 100
+            await message.answer(f"The probability of {key} = {value} %")
 
 @dp.message()
 async def handle_unknown_command(message: types.Message, bot: Bot):
