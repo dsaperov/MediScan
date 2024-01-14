@@ -1,5 +1,7 @@
 import asyncio
 import logging
+import os
+
 from aiogram import F
 from aiogram import Bot, Dispatcher, types
 from aiogram.utils.formatting import Text, Bold
@@ -33,6 +35,20 @@ model_mode = "predict"
 #ratings = []
 #with open('ratings.pkl', 'wb') as f:
 #    pickle.dump(ratings, f)
+
+if not os.path.exists('ratings.pkl'):
+    with open('ratings.pkl', 'wb') as f:
+        pickle.dump([], f)
+
+
+def get_ratings():
+    try:
+        with open('ratings.pkl', 'rb') as f:
+            ratings = pickle.load(f)
+    except EOFError:
+        ratings = []
+    return ratings
+
 
 def predict_by_photo(bytesIO):
     image_vectors = []
@@ -158,8 +174,7 @@ async def rate(message: types.Message):
 @dp.callback_query(lambda F: F.data=="1" or F.data=="2" or F.data=="3" or F.data=="4" or F.data=="5")
 async def add_rating(callback: types.CallbackQuery):
     rating = int(callback.data)
-    with open('ratings.pkl', 'rb') as f:
-        ratings = pickle.load(f)
+    ratings = get_ratings()
     ratings.append(int(rating))
     with open('ratings.pkl', 'wb') as f:
         pickle.dump(ratings, f)
@@ -167,8 +182,7 @@ async def add_rating(callback: types.CallbackQuery):
 
 @dp.message(Command("showrating"))
 async def rate(message: types.Message):
-    with open('ratings.pkl', 'rb') as f:
-        ratings = np.array(pickle.load(f))
+    ratings = np.array(get_ratings())
     if ratings.shape[0] > 0 :
         await message.answer(f"Mean rating is {ratings.mean():.2f} using {ratings.shape[0]} rating entries.")
     else :
