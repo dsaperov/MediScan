@@ -106,7 +106,7 @@ def predict_by_photo_CNN(bytesIO) :
 
 
 logging.basicConfig(level=logging.INFO)
-bot = Bot(token=getenv_or_throw_exception('BOT_TOKEN'))
+bot = Bot(token="6927350766:AAHYsGOciliUa_zmQjdBt6-_rOdnh-qxyLY")
 dp = Dispatcher()
 
 @dp.message(Command("start"))
@@ -121,21 +121,21 @@ async def cmd_start(message: types.Message):
     await message.answer("Welcome to Mesidcan_hse_bot. For the list of possible commands use /help.")
 
 @dp.message(Command("predict"))
-async def cmd_start(message: types.Message):
+async def cmd_predict(message: types.Message):
     global model_mode
     model_mode = "predict"
     await message.answer("Model operation mode changed to class prediction.")
     await message.answer("Please upload your photo.")
 
 @dp.message(Command("predictmel"))
-async def cmd_start(message: types.Message):
+async def cmd_predictmel(message: types.Message):
     global model_mode
     model_mode = "predictmel"
     await message.answer("Model operation mode changed to predicting melanomas")
     await message.answer("Please upload your photo.")
 
 @dp.message(Command("predictcnn"))
-async def cmd_start(message: types.Message):
+async def cmd_predictcnn(message: types.Message):
     global model_mode
     model_mode = "predictcnn"
     await message.answer("Model operation mode changed to predicting using CNN.")
