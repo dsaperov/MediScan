@@ -183,7 +183,7 @@ async def add_rating(callback: types.CallbackQuery):
     await callback.message.answer("Your rating was counted.")
 
 @dp.message(Command("showrating"))
-async def rate(message: types.Message):
+async def show_rate(message: types.Message):
     ratings = np.array(get_ratings())
     if ratings.shape[0] > 0 :
         await message.answer(f"Mean rating is {ratings.mean():.2f} using {ratings.shape[0]} rating entries.")
@@ -191,7 +191,7 @@ async def rate(message: types.Message):
         await message.answer("No ratings given yet.")
 
 @dp.message(Command("clearrating"))
-async def rate(message: types.Message):
+async def clear_rate(message: types.Message):
     ratings = []
     with open('ratings.pkl', 'wb') as f:
         pickle.dump(ratings, f)
