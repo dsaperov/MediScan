@@ -4,6 +4,7 @@ import os
 
 from aiogram import F
 from aiogram import Bot, Dispatcher, types
+from aiogram.types import File
 from aiogram.utils.formatting import Text, Bold
 from aiogram.filters.command import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -106,7 +107,7 @@ def predict_by_photo_CNN(bytesIO) :
 
 
 logging.basicConfig(level=logging.INFO)
-bot = Bot(token="6927350766:AAHYsGOciliUa_zmQjdBt6-_rOdnh-qxyLY")
+bot = Bot(token="6956127783:AAHNfrRM8tbKY4HnN3BvWWHyKq2d9RjaRB4")
 dp = Dispatcher()
 
 @dp.message(Command("start"))
@@ -199,16 +200,14 @@ async def clear_rate(message: types.Message):
 
 @dp.message(F.photo)
 async def download_photo(message: types.Message, bot: Bot):
-    await bot.download(message.photo[-1])
-    photo_file = await bot.get_file(message.photo[-1].file_id)
-    bytesIO = await bot.download_file(photo_file.file_path)
+    bytesIO = await bot.download(message.photo[-1].file_id)
     if model_mode == "predict":
         pred = predict_by_photo(bytesIO)
         await message.answer(f"The most likely class is {pred}.")
     elif model_mode == "predictmel":
         prob = predict_mel_by_photo(bytesIO)
         await message.answer(f"The probability of it being a melanoma is {prob:.3f}.")
-    else :
+    else:
         prob = predict_by_photo_CNN(bytesIO)
         prediction = np.round(prob, decimals=5)
         dct = {"MEL": 0., "NV": 0., "BCC": 0., "AKIEC": 0., "BKL": 0., "DF": 0., "VASC": 0.}
