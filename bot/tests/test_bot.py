@@ -1,3 +1,4 @@
+import os
 import random
 import string
 from io import BytesIO
@@ -161,3 +162,21 @@ async def test_add_rating():
         calls = await requester.query(MESSAGE.as_object(text="/showrate"))
         answer_message = calls.send_message.fetchone().text
         assert answer_message == "Mean rating is 3.00 using 1 rating entries."
+
+
+def test_ratings_file_creation(monkeypatch):
+    """Test that the ratings file is created if it doesn't exist."""
+    ratings_file = "ratings.pkl"
+    ratings_file_renamed = "ratings.pkl.bak"
+
+    if os.path.exists(ratings_file):
+        os.rename(ratings_file, ratings_file_renamed)
+
+    try:
+        exec(open("bot.py").read())
+        assert os.path.exists(ratings_file)
+        if os.path.exists(ratings_file):
+            os.remove(ratings_file)
+    finally:
+        if os.path.exists(ratings_file_renamed):
+            os.rename(ratings_file_renamed, ratings_file)
