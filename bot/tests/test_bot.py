@@ -1,4 +1,3 @@
-import os
 import random
 import string
 from io import BytesIO
@@ -7,16 +6,14 @@ import pickle
 
 import pytest
 from aiogram import Bot
-from aiogram import F
 from aiogram.filters import Command
 from aiogram_tests import MockedBot
-from aiogram_tests.handler import MessageHandler,CallbackQueryHandler
-from aiogram_tests.types.dataset import MESSAGE, MESSAGE_WITH_PHOTO, CALLBACK_QUERY
+from aiogram_tests.handler import MessageHandler
+from aiogram_tests.types.dataset import MESSAGE, MESSAGE_WITH_PHOTO
 
 from bot import cmd_help
 from bot import cmd_start
 from bot import handle_unknown_command
-from bot import rate
 from bot import clear_rate
 from bot import download_photo
 from bot import cmd_predict
@@ -26,7 +23,6 @@ from bot import show_rate
 from bot import rate
 from bot import add_rating
 from bot import get_ratings
-
 
 strings = string.ascii_letters + string.digits
 random_string = ''.join(random.choice(strings) for _ in range(7))
@@ -45,7 +41,8 @@ async def mock_add_rating(callback, bot):
     ratings.append(int(rating))
     with open('ratings.pkl', 'wb') as f:
         pickle.dump(ratings, f)
-    await bot.edit_message_text(text="Your rating was counted.", chat_id=callback.message.chat.id,
+    await bot.edit_message_text(text="Your rating was counted.",
+                                chat_id=callback.message.chat.id,
                                 message_id=callback.message.message_id)
 
 
@@ -54,20 +51,21 @@ async def test_cmd_help():
     requester = MockedBot(MessageHandler(cmd_help, Command(commands=["help"])))
     calls = await requester.query(MESSAGE.as_object(text="/help"))
     answer_message = calls.send_message.fetchone().text
-    assert answer_message == """Here is the list of possible commands: 
-    /start - start 
+    assert answer_message == """Here is the list of possible commands:
+    /start - start
     /help - get the list of all possible commands
     /predict - get the prediction which class is most likely
     /predictmel - get the probability that this is melanoma
-    /predictcnn - get the class prediction using CNN 
+    /predictcnn - get the class prediction using CNN
     /rate - rate this bot
-    /showrating - show bot rating                            
+    /showrating - show bot rating
                 """
 
 
 @pytest.mark.asyncio
 async def test_cmd_start():
-    requester = MockedBot(MessageHandler(cmd_start, Command(commands=["start"])))
+    requester = MockedBot(MessageHandler(cmd_start,
+                                         Command(commands=["start"])))
     calls = await requester.query(MESSAGE.as_object(text="/start"))
     answer_message = calls.send_message.fetchone().text
     assert answer_message == "Welcome to Mesidcan_hse_bot. For the list of possible commands use /help."
@@ -148,19 +146,18 @@ async def test_add_rating():
     mock_message = MagicMock()
     mock_callback_query.message = mock_message
 
-    with patch('bot.get_ratings', return_value=[]), \
-         patch('builtins.open', create=True), \
-         patch('pickle.dump'), \
-         patch.object(mock_bot, 'edit_message_text') as mock_edit_message_text:
-
+    with (patch('bot.get_ratings', return_value=[]),
+          patch('builtins.open', create=True),
+          patch('pickle.dump'),
+          patch.object(mock_bot, 'edit_message_text') as mock_edit_message_text):
         await add_rating(mock_callback_query, mock_bot)
 
-        mock_edit_message_text.assert_called_once_with(text="Your rate is counted.",
-                                                       message_id=mock_message.message_id,
-                                                       chat_id=mock_message.chat.id)
+        mock_edit_message_text \
+            .assert_called_once_with(text="Your rate is counted.",
+                                     message_id=mock_message.message_id,
+                                     chat_id=mock_message.chat.id)
 
         requester = MockedBot(MessageHandler(show_rate))
         calls = await requester.query(MESSAGE.as_object(text="/showrate"))
         answer_message = calls.send_message.fetchone().text
         assert answer_message == "Mean rating is 3.00 using 1 rating entries."
-
