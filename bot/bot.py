@@ -174,19 +174,22 @@ async def rate(message: types.Message):
     #else :
     #    await message.answer("Invalid rating. Valid ratings are integers from 1 to 5. Examples: '/rate 1', '/rate 5'.")
 
+
 @dp.callback_query(lambda F: F.data=="1" or F.data=="2" or F.data=="3" or F.data=="4" or F.data=="5")
-async def add_rating(callback: types.CallbackQuery):
+async def add_rating(callback: types.CallbackQuery, bot: Bot):
+    message = callback.message
     rating = int(callback.data)
     ratings = get_ratings()
     ratings.append(int(rating))
     with open('ratings.pkl', 'wb') as f:
         pickle.dump(ratings, f)
-    await callback.message.answer("Your rating was counted.")
+    await bot.edit_message_text(text="Your rate is counted.", message_id=message.message_id, chat_id=message.chat.id)
+
 
 @dp.message(Command("showrating"))
 async def show_rate(message: types.Message):
     ratings = np.array(get_ratings())
-    if ratings.shape[0] > 0 :
+    if ratings.shape[0] > 0:
         await message.answer(f"Mean rating is {ratings.mean():.2f} using {ratings.shape[0]} rating entries.")
     else :
         await message.answer("No ratings given yet.")
