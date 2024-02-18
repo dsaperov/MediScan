@@ -107,8 +107,9 @@ def predict_by_photo_CNN(bytesIO) :
 
 
 logging.basicConfig(level=logging.INFO)
-bot = Bot(token="6956127783:AAHNfrRM8tbKY4HnN3BvWWHyKq2d9RjaRB4")
+bot = Bot(token=getenv_or_throw_exception('BOT_TOKEN'))
 dp = Dispatcher()
+
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
