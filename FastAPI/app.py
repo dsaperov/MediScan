@@ -15,7 +15,7 @@ from aioredis.exceptions import ResponseError
 import uvicorn
 
 app = FastAPI(title = "MediScan app")
-redis = aioredis.from_url("redis://localhost")
+redis = aioredis.from_url("redis://redis")
 
 modelMEL = joblib.load("LogRegForMEL.pkl")
 
