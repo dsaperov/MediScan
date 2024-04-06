@@ -23,6 +23,7 @@ model = joblib.load("sgd_model.pkl")
 pca = joblib.load("pca.pkl")
 scaler = joblib.load("sc.pkl")
 model_CNN = keras.models.load_model('cnn_model_v2')
+target_size = (600, 450)
 
 modelMEL = pickle.load(open("LogRegForMEL.pkl", "rb"))
 
@@ -97,6 +98,9 @@ def predict_mel_by_photo(bytesIO):
 
 def predict_by_photo_CNN(bytesIO):
     image = Image.open(bytesIO)
+    width, height = image.size
+    if (width, height) != target_size:
+        image = image.resize(target_size)
     img = np.array(image)
     img_resize = cv2.resize(img, None, fx=0.3, fy=0.3)
     prob = model_CNN.predict(np.array([img_resize]))

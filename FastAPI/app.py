@@ -1,6 +1,4 @@
-from enum import Enum
-from fastapi import FastAPI, Response, HTTPException, UploadFile, File
-from pydantic import BaseModel
+from fastapi import FastAPI, UploadFile, File
 from typing import List
 import time
 import joblib
@@ -9,10 +7,8 @@ import numpy as np
 from io import BytesIO
 from redis import asyncio as aioredis
 from redis.exceptions import ConnectionError as RedisConnectionError
-from config import REDIS_HOST, REDIS_PORT
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
-from aioredis.exceptions import ResponseError
 from tensorflow import keras
 import cv2
 import uvicorn
@@ -22,11 +18,7 @@ app = FastAPI(title="MediScan app")
 redis = aioredis.from_url("redis://redis")
 
 modelMEL = joblib.load("LogRegForMEL.pkl")
-
-# class_dict = {"MEL": 1, "NV": 2, "BCC": 3,
-#               "AKIEC": 4, "BKL": 5, "DF": 6, "VASC": 7}
-# dict_class = {ind - 1: name for name, ind in class_dict.items()}
-
+target_size = (600, 450)
 
 @app.post("/predict_cnn")
 async def predict_by_photo_cnn(file: UploadFile = File(...)) -> dict[str, float]:
@@ -34,6 +26,9 @@ async def predict_by_photo_cnn(file: UploadFile = File(...)) -> dict[str, float]
     image_vectors = []
     content = file.file.read()
     image = Image.open(BytesIO(content))
+    width, height = image.size
+    if (width, height) != target_size:
+        image = image.resize(target_size)
     image = np.asarray(image.convert("RGB"))
     image = cv2.resize(image, None, fx=0.3, fy=0.3)
     image_vectors.append(image)
@@ -125,7 +120,6 @@ def root():
 
 @app.on_event("startup")
 async def startup_event():
-    # redis = aioredis.from_url(f"redis://{REDIS_HOST}:{REDIS_PORT}", encoding="utf8", decode_responses=True)
     FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
 
 
