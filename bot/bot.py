@@ -52,6 +52,9 @@ def get_ratings():
 def predict_by_photo(bytesIO):
     image_vectors = []
     image = Image.open(bytesIO)
+    width, height = image.size
+    if (width, height) != target_size:
+        image = image.resize(target_size)
     gray_image = np.asarray(image.convert("L"))
     image = rescale(gray_image, 1 / 3, mode='reflect')
     img_hog, hog_img = hog(
