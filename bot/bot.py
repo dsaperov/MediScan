@@ -17,7 +17,9 @@ import pickle
 
 import cv2
 from tensorflow import keras
-from utils import getenv_or_throw_exception
+from utils import getenv_or_throw_exception, is_running_in_docker, get_docker_secret
+
+TOKEN = "BOT_TOKEN"
 
 model = joblib.load("sgd_model.pkl")
 pca = joblib.load("pca.pkl")
@@ -108,7 +110,13 @@ def predict_by_photo_CNN(bytesIO):
 
 
 logging.basicConfig(level=logging.INFO)
-bot = Bot(token=getenv_or_throw_exception('BOT_TOKEN'))
+
+if is_running_in_docker():
+    token = get_docker_secret(TOKEN)
+else:
+    token = getenv_or_throw_exception(TOKEN)
+
+bot = Bot(token=token)
 dp = Dispatcher()
 
 
