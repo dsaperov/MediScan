@@ -1,0 +1,17 @@
+version: '3'
+services:
+  app:
+    build: ./FastAPI
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+  redis:
+    image: "redis:alpine"
+  bot:
+    build: ./bot
+    secrets:
+      - BOT_TOKEN
+secrets:
+  BOT_TOKEN:
+    file: ./bot_token.txt
