@@ -20,6 +20,7 @@ redis = aioredis.from_url("redis://redis")
 modelMEL = joblib.load("LogRegForMEL.pkl")
 target_size = (600, 450)
 
+
 @app.post("/predict_cnn")
 async def predict_by_photo_cnn(file: UploadFile = File(...)) -> dict[str, float]:
     class_dict = {"MEL": 0., "NV": 0., "BCC": 0., "AKIEC": 0., "BKL": 0., "DF": 0., "VASC": 0.}
