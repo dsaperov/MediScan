@@ -44,7 +44,7 @@ if not os.path.exists('ratings.pkl'):
         pickle.dump([], f)
 
 
-def predict_by_photo_ENB0(bytesIO):
+def predict_by_photo_cnn(bytesIO):
     image = Image.open(bytesIO).convert('RGB')
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
@@ -187,10 +187,10 @@ async def cmd_predictmel(message: types.Message):
 #     await message.answer("Please upload your photo.")
 
 
-@dp.message(Command("predictenb0"))
-async def cmd_predictenb0(message: types.Message):
+@dp.message(Command("predictcnn"))
+async def cmd_predictcnn(message: types.Message):
     global model_mode
-    model_mode = "predictenb0"
+    model_mode = "predictcnn"
     await message.answer("Model operation mode changed to predicting using CNN.")
     await message.answer("Please upload your photo.")
 
@@ -202,7 +202,7 @@ async def cmd_help(message: types.Message):
     /help - get the list of all possible commands
     /predict - get the prediction which class is most likely
     /predictmel - get the probability that this is melanoma
-    /predictenb0 - get the class prediction using CNN
+    /predictcnn - get the class prediction using CNN (efficient_net_b0)
     /rate - rate this bot
     /showrating - show bot rating
                 """)
@@ -268,7 +268,7 @@ async def download_photo(message: types.Message, bot: Bot):
     #         value = float("{:.2f}".format(value)) * 100
     #         await message.answer(f"The probability of {key} = {value} %")
     else:
-        pred = predict_by_photo_ENB0(bytesIO)
+        pred = predict_by_photo_cnn(bytesIO)
         await message.answer(f"The most likely class is {pred}.")
 
 
