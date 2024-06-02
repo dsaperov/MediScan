@@ -14,6 +14,8 @@ from skimage.feature import hog
 from skimage.transform import rescale
 import pandas as pd
 import pickle
+import torch
+import torchvision.transforms as transforms
 
 import cv2
 from tensorflow import keras
@@ -28,6 +30,7 @@ model_CNN = keras.models.load_model('cnn_model_v2')
 target_size = (600, 450)
 
 modelMEL = pickle.load(open("LogRegForMEL.pkl", "rb"))
+modelENB0 = torch.load('efficient_net_b0/model.pth', map_location=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
 
 class_dict = {"MEL": 1, "NV": 2, "BCC": 3,
               "AKIEC": 4, "BKL": 5, "DF": 6, "VASC": 7}
@@ -39,6 +42,28 @@ if not os.path.exists('ratings.pkl'):
     with open('ratings.pkl', 'wb') as f:
         pickle.dump([], f)
 
+
+def predict_by_photo_ENB0(bytesIO):
+    image = Image.open(bytesIO).convert('RGB')
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+
+    input_image = transform(image)
+
+    input_image = input_image.unsqueeze(0)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    input_image = input_image.to(device)
+
+    with torch.no_grad():
+        output = model(input_image)
+
+    predicted_class = torch.argmax(output, dim=1).item()
+
+    return dict_class[predicted_class]
 
 def get_ratings():
     try:
@@ -160,6 +185,14 @@ async def cmd_predictcnn(message: types.Message):
     await message.answer("Please upload your photo.")
 
 
+@dp.message(Command("predictenb0"))
+async def cmd_predictenb0(message: types.Message):
+    global model_mode
+    model_mode = "predictenb0"
+    await message.answer("Model operation mode changed to predicting using CNN.")
+    await message.answer("Please upload your photo.")
+
+
 @dp.message(Command("help"))
 async def cmd_help(message: types.Message):
     await message.answer("""Here is the list of possible commands:
@@ -221,7 +254,7 @@ async def download_photo(message: types.Message, bot: Bot):
     elif model_mode == "predictmel":
         prob = predict_mel_by_photo(bytesIO)
         await message.answer(f"The probability of it being a melanoma is {prob:.3f}.")
-    else:
+    elif model_mode == "predictcnn":
         prob = predict_by_photo_CNN(bytesIO)
         prediction = np.round(prob, decimals=5)
         dct = {"MEL": 0., "NV": 0., "BCC": 0., "AKIEC": 0., "BKL": 0., "DF": 0., "VASC": 0.}
@@ -232,6 +265,9 @@ async def download_photo(message: types.Message, bot: Bot):
         for key, value in dct.items():
             value = float("{:.2f}".format(value)) * 100
             await message.answer(f"The probability of {key} = {value} %")
+    else:
+        pred = predict_by_photo_ENB0(bytesIO)
+        await message.answer(f"The most likely class is {pred}.")
 
 
 @dp.message()
