@@ -59,7 +59,7 @@ def predict_by_photo_ENB0(bytesIO):
     input_image = input_image.to(device)
 
     with torch.no_grad():
-        output = model(input_image)
+        output = modelENB0(input_image)
 
     predicted_class = torch.argmax(output, dim=1).item()
 
