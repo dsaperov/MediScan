@@ -30,7 +30,8 @@ scaler = joblib.load("sc.pkl")
 target_size = (600, 450)
 
 modelMEL = pickle.load(open("LogRegForMEL.pkl", "rb"))
-modelENB0 = torch.load('efficient_net_b0/model.pth', map_location=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
+modelENB0 = torch.load('efficient_net_b0/model.pth',
+                       map_location=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
 
 class_dict = {"MEL": 1, "NV": 2, "BCC": 3,
               "AKIEC": 4, "BKL": 5, "DF": 6, "VASC": 7}
@@ -64,6 +65,7 @@ def predict_by_photo_ENB0(bytesIO):
     predicted_class = torch.argmax(output, dim=1).item()
 
     return dict_class[predicted_class]
+
 
 def get_ratings():
     try:
@@ -254,17 +256,17 @@ async def download_photo(message: types.Message, bot: Bot):
     elif model_mode == "predictmel":
         prob = predict_mel_by_photo(bytesIO)
         await message.answer(f"The probability of it being a melanoma is {prob:.3f}.")
-    elif model_mode == "predictcnn":
-        prob = predict_by_photo_CNN(bytesIO)
-        prediction = np.round(prob, decimals=5)
-        dct = {"MEL": 0., "NV": 0., "BCC": 0., "AKIEC": 0., "BKL": 0., "DF": 0., "VASC": 0.}
-        c = 0
-        for key, value in dct.items():
-            dct[key] = prediction[0][c]
-            c += 1
-        for key, value in dct.items():
-            value = float("{:.2f}".format(value)) * 100
-            await message.answer(f"The probability of {key} = {value} %")
+    # elif model_mode == "predictcnn":
+    #     prob = predict_by_photo_CNN(bytesIO)
+    #     prediction = np.round(prob, decimals=5)
+    #     dct = {"MEL": 0., "NV": 0., "BCC": 0., "AKIEC": 0., "BKL": 0., "DF": 0., "VASC": 0.}
+    #     c = 0
+    #     for key, value in dct.items():
+    #         dct[key] = prediction[0][c]
+    #         c += 1
+    #     for key, value in dct.items():
+    #         value = float("{:.2f}".format(value)) * 100
+    #         await message.answer(f"The probability of {key} = {value} %")
     else:
         pred = predict_by_photo_ENB0(bytesIO)
         await message.answer(f"The most likely class is {pred}.")
