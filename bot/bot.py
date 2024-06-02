@@ -17,8 +17,8 @@ import pickle
 import torch
 import torchvision.transforms as transforms
 
-import cv2
-from tensorflow import keras
+# import cv2
+# from tensorflow import keras
 from utils import getenv_or_throw_exception, is_running_in_docker, get_docker_secret
 
 TOKEN = "BOT_TOKEN"
@@ -26,7 +26,7 @@ TOKEN = "BOT_TOKEN"
 model = joblib.load("sgd_model.pkl")
 pca = joblib.load("pca.pkl")
 scaler = joblib.load("sc.pkl")
-model_CNN = keras.models.load_model('cnn_model_v2')
+# model_CNN = keras.models.load_model('cnn_model_v2')
 target_size = (600, 450)
 
 modelMEL = pickle.load(open("LogRegForMEL.pkl", "rb"))
@@ -126,15 +126,15 @@ def predict_mel_by_photo(bytesIO):
     return prob[0, 1]
 
 
-def predict_by_photo_CNN(bytesIO):
-    image = Image.open(bytesIO)
-    width, height = image.size
-    if (width, height) != target_size:
-        image = image.resize(target_size)
-    img = np.array(image)
-    img_resize = cv2.resize(img, None, fx=0.3, fy=0.3)
-    prob = model_CNN.predict(np.array([img_resize]))
-    return prob
+# def predict_by_photo_CNN(bytesIO):
+#     image = Image.open(bytesIO)
+#     width, height = image.size
+#     if (width, height) != target_size:
+#         image = image.resize(target_size)
+#     img = np.array(image)
+#     img_resize = cv2.resize(img, None, fx=0.3, fy=0.3)
+#     prob = model_CNN.predict(np.array([img_resize]))
+#     return prob
 
 
 logging.basicConfig(level=logging.INFO)
@@ -177,12 +177,12 @@ async def cmd_predictmel(message: types.Message):
     await message.answer("Please upload your photo.")
 
 
-@dp.message(Command("predictcnn"))
-async def cmd_predictcnn(message: types.Message):
-    global model_mode
-    model_mode = "predictcnn"
-    await message.answer("Model operation mode changed to predicting using CNN.")
-    await message.answer("Please upload your photo.")
+# @dp.message(Command("predictcnn"))
+# async def cmd_predictcnn(message: types.Message):
+#     global model_mode
+#     model_mode = "predictcnn"
+#     await message.answer("Model operation mode changed to predicting using CNN.")
+#     await message.answer("Please upload your photo.")
 
 
 @dp.message(Command("predictenb0"))
@@ -200,7 +200,7 @@ async def cmd_help(message: types.Message):
     /help - get the list of all possible commands
     /predict - get the prediction which class is most likely
     /predictmel - get the probability that this is melanoma
-    /predictcnn - get the class prediction using CNN
+    /predictenb0 - get the class prediction using CNN
     /rate - rate this bot
     /showrating - show bot rating
                 """)
