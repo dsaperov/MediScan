@@ -30,7 +30,7 @@ scaler = joblib.load("sc.pkl")
 target_size = (600, 450)
 
 modelMEL = pickle.load(open("LogRegForMEL.pkl", "rb"))
-modelENB0 = torch.load('efficient_net_b0/model.pth',
+modelENB0 = torch.load('efficient_net_b0/model_focal_loss.pth',
                        map_location=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
 
 class_dict = {"MEL": 1, "NV": 2, "BCC": 3,
