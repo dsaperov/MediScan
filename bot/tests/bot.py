@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import os
 
 from aiogram import F
 from aiogram import Bot, Dispatcher, types
@@ -14,16 +13,25 @@ from skimage.feature import hog
 from skimage.transform import rescale
 import pandas as pd
 import pickle
+import torch
+import torchvision.transforms as transforms
 
-import cv2
-from tensorflow import keras
+# import cv2
+# from tensorflow import keras
+from database import save_rating, get_ratings, delete_rating, check_rating
+from utils import getenv_or_throw_exception, is_running_in_docker, get_docker_secret
+
+TOKEN = "BOT_TOKEN"
 
 model = joblib.load("sgd_model.pkl")
 pca = joblib.load("pca.pkl")
 scaler = joblib.load("sc.pkl")
-model_CNN = keras.models.load_model('cnn_model_v2')
+# model_CNN = keras.models.load_model('cnn_model_v2')
+target_size = (600, 450)
 
 modelMEL = pickle.load(open("LogRegForMEL.pkl", "rb"))
+modelENB0 = torch.load('efficient_net_b0/model_focal_loss.pth',
+                       map_location=torch.device("cuda" if torch.cuda.is_available() else "cpu"))
 
 class_dict = {"MEL": 1, "NV": 2, "BCC": 3,
               "AKIEC": 4, "BKL": 5, "DF": 6, "VASC": 7}
@@ -31,23 +39,36 @@ dict_class = {ind - 1: name for name, ind in class_dict.items()}
 
 model_mode = "predict"
 
-if not os.path.exists('ratings.pkl'):
-    with open('ratings.pkl', 'wb') as f:
-        pickle.dump([], f)
 
+def predict_by_photo_cnn(bytesIO):
+    image = Image.open(bytesIO).convert('RGB')
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
 
-def get_ratings():
-    try:
-        with open('ratings.pkl', 'rb') as f:
-            ratings = pickle.load(f)
-    except EOFError:
-        ratings = []
-    return ratings
+    input_image = transform(image)
+
+    input_image = input_image.unsqueeze(0)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    input_image = input_image.to(device)
+
+    with torch.no_grad():
+        output = modelENB0(input_image)
+
+    predicted_class = torch.argmax(output, dim=1).item()
+
+    return dict_class[predicted_class]
 
 
 def predict_by_photo(bytesIO):
     image_vectors = []
     image = Image.open(bytesIO)
+    width, height = image.size
+    if (width, height) != target_size:
+        image = image.resize(target_size)
     gray_image = np.asarray(image.convert("L"))
     image = rescale(gray_image, 1 / 3, mode='reflect')
     img_hog, hog_img = hog(
@@ -94,16 +115,25 @@ def predict_mel_by_photo(bytesIO):
     return prob[0, 1]
 
 
-def predict_by_photo_CNN(bytesIO):
-    image = Image.open(bytesIO)
-    img = np.array(image)
-    img_resize = cv2.resize(img, None, fx=0.3, fy=0.3)
-    prob = model_CNN.predict(np.array([img_resize]))
-    return prob
+# def predict_by_photo_CNN(bytesIO):
+#     image = Image.open(bytesIO)
+#     width, height = image.size
+#     if (width, height) != target_size:
+#         image = image.resize(target_size)
+#     img = np.array(image)
+#     img_resize = cv2.resize(img, None, fx=0.3, fy=0.3)
+#     prob = model_CNN.predict(np.array([img_resize]))
+#     return prob
 
 
 logging.basicConfig(level=logging.INFO)
-bot = Bot(token="6956127783:AAHNfrRM8tbKY4HnN3BvWWHyKq2d9RjaRB4")
+
+if is_running_in_docker():
+    token = get_docker_secret(TOKEN)
+else:
+    token = getenv_or_throw_exception(TOKEN)
+
+bot = Bot(token=token)
 dp = Dispatcher()
 
 
@@ -136,6 +166,14 @@ async def cmd_predictmel(message: types.Message):
     await message.answer("Please upload your photo.")
 
 
+# @dp.message(Command("predictcnn"))
+# async def cmd_predictcnn(message: types.Message):
+#     global model_mode
+#     model_mode = "predictcnn"
+#     await message.answer("Model operation mode changed to predicting using CNN.")
+#     await message.answer("Please upload your photo.")
+
+
 @dp.message(Command("predictcnn"))
 async def cmd_predictcnn(message: types.Message):
     global model_mode
@@ -151,7 +189,7 @@ async def cmd_help(message: types.Message):
     /help - get the list of all possible commands
     /predict - get the prediction which class is most likely
     /predictmel - get the probability that this is melanoma
-    /predictcnn - get the class prediction using CNN
+    /predictcnn - get the class prediction using CNN (efficient_net_b0)
     /rate - rate this bot
     /showrating - show bot rating
                 """)
@@ -168,32 +206,35 @@ async def rate(message: types.Message):
     await message.answer("Choose a rating.", reply_markup=builder.as_markup())
 
 
-@dp.callback_query(lambda F: F.data == "1" or F.data == "2" or F.data == "3" or F.data == "4" or F.data == "5")
+@dp.callback_query(lambda F: F.data in ["1", "2", "3", "4", "5"])
 async def add_rating(callback: types.CallbackQuery, bot: Bot):
     message = callback.message
+    user_id = callback.from_user.id
     rating = int(callback.data)
-    ratings = get_ratings()
-    ratings.append(int(rating))
-    with open('ratings.pkl', 'wb') as f:
-        pickle.dump(ratings, f)
+    save_rating(user_id, rating)
     await bot.edit_message_text(text="Your rate is counted.", message_id=message.message_id, chat_id=message.chat.id)
 
 
 @dp.message(Command("showrating"))
 async def show_rate(message: types.Message):
-    ratings = np.array(get_ratings())
-    if ratings.shape[0] > 0:
-        await message.answer(f"Mean rating is {ratings.mean():.2f} using {ratings.shape[0]} rating entries.")
+    ratings = get_ratings()
+    ratings_num = len(ratings)
+    mean_rating = sum(ratings) / ratings_num if ratings_num > 0 else 0
+    if ratings_num > 0:
+        await message.answer(f"Mean rating is {mean_rating:.2f} using {ratings_num} rating entries.")
     else:
         await message.answer("No ratings given yet.")
 
 
 @dp.message(Command("clearrating"))
 async def clear_rate(message: types.Message):
-    ratings = []
-    with open('ratings.pkl', 'wb') as f:
-        pickle.dump(ratings, f)
-    await message.answer("Rating cleared.")
+    user_id = message.from_user.id
+    user_sent_rating = check_rating(user_id)
+    if user_sent_rating:
+        delete_rating(user_id)
+        await message.answer("Rating cleared.")
+    else:
+        await message.answer("No rating to clear.")
 
 
 @dp.message(F.photo)
@@ -205,17 +246,20 @@ async def download_photo(message: types.Message, bot: Bot):
     elif model_mode == "predictmel":
         prob = predict_mel_by_photo(bytesIO)
         await message.answer(f"The probability of it being a melanoma is {prob:.3f}.")
+    # elif model_mode == "predictcnn":
+    #     prob = predict_by_photo_CNN(bytesIO)
+    #     prediction = np.round(prob, decimals=5)
+    #     dct = {"MEL": 0., "NV": 0., "BCC": 0., "AKIEC": 0., "BKL": 0., "DF": 0., "VASC": 0.}
+    #     c = 0
+    #     for key, value in dct.items():
+    #         dct[key] = prediction[0][c]
+    #         c += 1
+    #     for key, value in dct.items():
+    #         value = float("{:.2f}".format(value)) * 100
+    #         await message.answer(f"The probability of {key} = {value} %")
     else:
-        prob = predict_by_photo_CNN(bytesIO)
-        prediction = np.round(prob, decimals=5)
-        dct = {"MEL": 0., "NV": 0., "BCC": 0., "AKIEC": 0., "BKL": 0., "DF": 0., "VASC": 0.}
-        c = 0
-        for key, value in dct.items():
-            dct[key] = prediction[0][c]
-            c += 1
-        for key, value in dct.items():
-            value = float("{:.2f}".format(value)) * 100
-            await message.answer(f"The probability of {key} = {value} %")
+        pred = predict_by_photo_cnn(bytesIO)
+        await message.answer(f"The most likely class is {pred}.")
 
 
 @dp.message()

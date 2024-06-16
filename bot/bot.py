@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import os
 
 from aiogram import F
 from aiogram import Bot, Dispatcher, types
@@ -19,6 +18,7 @@ import torchvision.transforms as transforms
 
 # import cv2
 # from tensorflow import keras
+from database import save_rating, get_ratings, delete_rating, check_rating
 from utils import getenv_or_throw_exception, is_running_in_docker, get_docker_secret
 
 TOKEN = "BOT_TOKEN"
@@ -38,10 +38,6 @@ class_dict = {"MEL": 1, "NV": 2, "BCC": 3,
 dict_class = {ind - 1: name for name, ind in class_dict.items()}
 
 model_mode = "predict"
-
-if not os.path.exists('ratings.pkl'):
-    with open('ratings.pkl', 'wb') as f:
-        pickle.dump([], f)
 
 
 def predict_by_photo_cnn(bytesIO):
@@ -65,15 +61,6 @@ def predict_by_photo_cnn(bytesIO):
     predicted_class = torch.argmax(output, dim=1).item()
 
     return dict_class[predicted_class]
-
-
-def get_ratings():
-    try:
-        with open('ratings.pkl', 'rb') as f:
-            ratings = pickle.load(f)
-    except EOFError:
-        ratings = []
-    return ratings
 
 
 def predict_by_photo(bytesIO):
@@ -219,32 +206,35 @@ async def rate(message: types.Message):
     await message.answer("Choose a rating.", reply_markup=builder.as_markup())
 
 
-@dp.callback_query(lambda F: F.data == "1" or F.data == "2" or F.data == "3" or F.data == "4" or F.data == "5")
+@dp.callback_query(lambda F: F.data in ["1", "2", "3", "4", "5"])
 async def add_rating(callback: types.CallbackQuery, bot: Bot):
     message = callback.message
+    user_id = callback.from_user.id
     rating = int(callback.data)
-    ratings = get_ratings()
-    ratings.append(int(rating))
-    with open('ratings.pkl', 'wb') as f:
-        pickle.dump(ratings, f)
+    save_rating(user_id, rating)
     await bot.edit_message_text(text="Your rate is counted.", message_id=message.message_id, chat_id=message.chat.id)
 
 
 @dp.message(Command("showrating"))
 async def show_rate(message: types.Message):
-    ratings = np.array(get_ratings())
-    if ratings.shape[0] > 0:
-        await message.answer(f"Mean rating is {ratings.mean():.2f} using {ratings.shape[0]} rating entries.")
+    ratings = get_ratings()
+    ratings_num = len(ratings)
+    mean_rating = sum(ratings) / ratings_num if ratings_num > 0 else 0
+    if ratings_num > 0:
+        await message.answer(f"Mean rating is {mean_rating:.2f} using {ratings_num} rating entries.")
     else:
         await message.answer("No ratings given yet.")
 
 
 @dp.message(Command("clearrating"))
 async def clear_rate(message: types.Message):
-    ratings = []
-    with open('ratings.pkl', 'wb') as f:
-        pickle.dump(ratings, f)
-    await message.answer("Rating cleared.")
+    user_id = message.from_user.id
+    user_sent_rating = check_rating(user_id)
+    if user_sent_rating:
+        delete_rating(user_id)
+        await message.answer("Rating cleared.")
+    else:
+        await message.answer("No rating to clear.")
 
 
 @dp.message(F.photo)
